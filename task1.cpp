@@ -1,40 +1,62 @@
 #include <Arduino.h>
 #include "task1.h"
 
+void task1()
+{
 
-void task1(){
-    enum class Task1States{
+    enum class TaskStates
+    {
         INIT,
-        WAIT_TO_TOGGLE_LED
+        WAIT_INIT,
+        SEND_EVENT
     };
-    static Task1States task1State = Task1States::INIT;
-    static uint32_t lasTime;
-    static constexpr uint32_t INTERVAL = 100;
-    static constexpr uint8_t ledRed = 14;
-    static bool ledStatus = false;
+    static TaskStates taskState = TaskStates::INIT;
+    static uint32_t previous = 0;
+    static u_int32_t counter = 0;
 
-    switch(task1State){
-        case Task1States::INIT:{
-            pinMode(ledRed,OUTPUT);
-            lasTime = millis();
-            task1State = Task1States::WAIT_TO_TOGGLE_LED;
-            break;
-        }
-
-        case Task1States::WAIT_TO_TOGGLE_LED:{
-            // evento 1:
-            uint32_t currentTime = millis();
-            if( (currentTime - lasTime) >= INTERVAL ){
-                lasTime = currentTime;
-                digitalWrite(ledRed,ledStatus);
-                ledStatus = !ledStatus;
-            }
-            break;
-        }
-
-        default:{
-            break;
-        }
+    switch (taskState)
+    {
+    case TaskStates::INIT:
+    {
+        Serial.begin(115200);
+        taskState = TaskStates::WAIT_INIT;
+        break;
     }
+    case TaskStates::WAIT_INIT:
+    {
+        if (Serial.available() > 0)
+        {
+            if (Serial.read() == '1')
+            {
+                previous = 0; 
+                taskState = TaskStates::SEND_EVENT;
+            }
+        }
+        break;
+    }
+    case TaskStates::SEND_EVENT:
+    {
+        uint32_t current = millis();
+        if ((current - previous) > 2000)
+        {
+            previous = current;
+            Serial.print(counter);
+            counter++;
+        }
 
+        if (Serial.available() > 0)
+        {
+            if (Serial.read() == '2')
+            {
+                taskState = TaskStates::WAIT_INIT;
+            }
+        }
+
+        break;
+    }
+    default:
+    {
+        break;
+    }
+    }
 }
